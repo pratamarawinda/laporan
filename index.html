@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1f5c45">
+<title>Kas RT</title>
+<style>
+:root{--bg:#eef1ec;--card:#fff;--tx:#18211c;--mu:#66726b;--ac:#1f5c45;--acb:#d9ece2;--rd:#b3372b;--bd:#d9ded8;--hd:#1f5c45;--hdt:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#121714;--card:#1b231e;--tx:#e9eeea;--mu:#93a099;--ac:#5cc197;--acb:#21402f;--rd:#ee8a7e;--bd:#2a342e;--hd:#16352a;--hdt:#e9eeea}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:70px}
+header{background:var(--hd);color:var(--hdt);padding:calc(14px + env(safe-area-inset-top,0px)) 16px 16px}
+header small{opacity:.8}
+.saldo{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:2px 0 6px}
+.mm{display:flex;gap:18px;font-size:13px;opacity:.9}
+main{padding:14px;max-width:760px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 4px;font:inherit;font-size:13px;font-weight:600}
+nav button.on{color:var(--ac);box-shadow:inset 0 3px 0 var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mu);margin:10px 0 3px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:240px;font-size:13px}
+button{font:inherit;cursor:pointer}
+.pri{background:var(--ac);color:var(--card);border:0;border-radius:8px;padding:12px;width:100%;font-weight:700;margin-top:14px}
+.sec{background:none;border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:10px 12px;margin:4px 4px 0 0}
+.sm{background:none;border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:4px 12px;font-size:18px}
+.del{background:none;border:0;color:var(--rd);font-size:13px;padding:4px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mu{color:var(--mu);font-size:13px}.rd{color:var(--rd)}.gr{color:var(--ac)}
+.sc{overflow-x:auto;border:1px solid var(--bd);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 4px;border-bottom:1px solid var(--bd);text-align:center;font-size:12px}
+th.s,td.s{position:sticky;left:0;background:var(--card);text-align:left;min-width:120px;padding-left:10px;z-index:1;border-right:1px solid var(--bd)}
+td.c{min-width:38px;height:44px;cursor:pointer;font-size:18px}
+td.c.ok{background:var(--acb);color:var(--ac);font-weight:700}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:10px;border:1px solid var(--bd);background:none;color:var(--tx);border-radius:8px;font-weight:600}
+.seg button.on{background:var(--ac);color:var(--card);border-color:var(--ac)}
+.li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.li:last-child{border:0}
+.amt{font-weight:700;white-space:nowrap;text-align:right}
+h3{margin:0 0 8px;font-size:16px}
+</style>
+</head>
+<body>
+<header><small>Kas RT</small><div class="saldo" id="saldo">Rp0</div><div class="mm"><span id="hm"></span><span id="hk"></span></div></header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<script>
+var K='kasrt_v1',S={warga:[],trx:[]};
+try{var r=localStorage.getItem(K);if(r)S=JSON.parse(r)}catch(e){}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Gagal menyimpan. Cek apakah browser lu mode private.')}}
+var $=function(i){return document.getElementById(i)};
+var rp=function(n){return 'Rp'+Number(n||0).toLocaleString('id-ID')};
+var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
+var today=function(){return new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+var BLNF=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+var KM=['Iuran warga','Donasi','Lainnya'],KK=['Gaji satpam','Kebersihan','Listrik/air pos','Perbaikan','Acara/kegiatan','Lainnya'];
+var tab='cek',year=new Date().getFullYear(),ft='masuk',rm=today().slice(0,7);
+var TABS=[['cek','Checklist'],['cat','Catat'],['war','Warga'],['lap','Laporan']];
+
+function sum(arr,tipe){return arr.filter(function(t){return t.tipe===tipe}).reduce(function(a,t){return a+t.nom},0)}
+function render(){
+  var m=today().slice(0,7),bt=S.trx.filter(function(t){return t.tgl.slice(0,7)===m});
+  $('saldo').textContent=rp(sum(S.trx,'masuk')-sum(S.trx,'keluar'));
+  $('hm').textContent='Masuk bulan ini '+rp(sum(bt,'masuk'));
+  $('hk').textContent='Keluar '+rp(sum(bt,'keluar'));
+  $('nav').innerHTML=TABS.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="tab=\''+t[0]+'\';render()">'+t[1]+'</button>'}).join('');
+  $('main').innerHTML={cek:vCek,cat:vCat,war:vWar,lap:vLap}[tab]();
+  if(tab==='cat')setTipe(ft,true);
+  if(tab==='lap')genLap();
+}
+
+/* CHECKLIST */
+function vCek(){
+  var now=new Date(),cy=now.getFullYear(),lim=year<cy?12:year>cy?0:now.getMonth()+1;
+  var h='<div class="row"><button class="sm" onclick="year--;render()">‹</button><b>Iuran '+year+'</b><button class="sm" onclick="year++;render()">›</button></div>';
+  if(!S.warga.length)return h+'<div class="card">Belum ada warga. Tambah dulu di tab Warga.</div>';
+  h+='<div class="sc"><table><tr><th class="s">Warga</th>'+BLN.map(function(b){return '<th>'+b+'</th>'}).join('')+'</tr>';
+  S.warga.forEach(function(w){
+    var tg=0;
+    var cells=BLN.map(function(_,i){
+      var ym=year+'-'+String(i+1).padStart(2,'0');
+      var p=S.trx.some(function(t){return t.wid===w.id&&t.ym===ym});
+      if(!p&&i<lim)tg++;
+      return '<td class="c'+(p?' ok':'')+'" onclick="tog(\''+w.id+'\',\''+ym+'\')">'+(p?'✓':'')+'</td>';
+    }).join('');
+    h+='<tr><td class="s"><b>'+esc(w.nama)+'</b><br><span class="mu">'+esc(w.blok)+(tg?' · <span class="rd">nunggak '+tg+' bln</span>':'')+'</span></td>'+cells+'</tr>';
+  });
+  return h+'</table></div><p class="mu">Tap kotak untuk centang atau batal. Centang otomatis tercatat sebagai pemasukan iuran sebesar nominal iuran warga itu.</p>';
+}
+function tog(wid,ym){
+  var w=S.warga.find(function(x){return x.id===wid}),i=S.trx.findIndex(function(t){return t.wid===wid&&t.ym===ym});
+  if(i>=0){if(!confirm('Batalkan iuran '+w.nama+' bulan '+ym+'? Catatan pemasukannya ikut terhapus.'))return;S.trx.splice(i,1)}
+  else S.trx.push({id:uid(),tgl:today(),tipe:'masuk',kat:'Iuran warga',nom:w.iuran,cat:'Iuran '+ym,wid:wid,wn:w.nama,ym:ym});
+  save();render();
+}
+
+/* CATAT */
+function vCat(){
+  var recent=S.trx.slice().sort(function(a,b){return b.tgl.localeCompare(a.tgl)||0}).slice(0,30);
+  return '<div class="card"><div class="seg"><button id="tm" onclick="setTipe(\'masuk\')">Pemasukan</button><button id="tk" onclick="setTipe(\'keluar\')">Pengeluaran</button></div>'+
+  '<label>Tanggal</label><input type="date" id="f_tgl" value="'+today()+'">'+
+  '<label>Kategori</label><select id="f_kat" onchange="katChg()"></select>'+
+  '<div id="f_iur"><label>Warga</label><select id="f_w" onchange="wChg()">'+S.warga.map(function(w){return '<option value="'+w.id+'">'+esc(w.nama)+' ('+esc(w.blok)+')</option>'}).join('')+'</select>'+
+  '<label>Untuk bulan</label><input type="month" id="f_ym" value="'+today().slice(0,7)+'"></div>'+
+  '<label>Nominal (Rp)</label><input type="number" inputmode="numeric" id="f_nom" placeholder="0">'+
+  '<label>Catatan (opsional)</label><input id="f_cat">'+
+  '<button class="pri" onclick="addTrx()">Simpan transaksi</button></div>'+
+  '<h3>Transaksi terakhir</h3><div class="card">'+(recent.length?recent.map(function(t){
+    return '<div class="li"><div><b>'+esc(t.kat)+(t.wn?' · '+esc(t.wn):'')+'</b><br><span class="mu">'+t.tgl+(t.cat?' · '+esc(t.cat):'')+'</span></div><div><div class="amt '+(t.tipe==='masuk'?'gr':'rd')+'">'+(t.tipe==='masuk'?'+':'−')+rp(t.nom)+'</div><button class="del" onclick="delTrx(\''+t.id+'\')">hapus</button></div></div>';
+  }).join(''):'<span class="mu">Belum ada transaksi.</span>')+'</div>';
+}
+function setTipe(t,keep){
+  ft=t;$('tm').className=t==='masuk'?'on':'';$('tk').className=t==='keluar'?'on':'';
+  $('f_kat').innerHTML=(t==='masuk'?KM:KK).map(function(k){return '<option>'+k+'</option>'}).join('');
+  katChg();
+}
+function katChg(){
+  var iur=ft==='masuk'&&$('f_kat').value==='Iuran warga';
+  $('f_iur').style.display=iur?'block':'none';
+  if(iur)wChg();
+}
+function wChg(){var w=S.warga.find(function(x){return x.id===$('f_w').value});if(w)$('f_nom').value=w.iuran}
+function addTrx(){
+  var nom=parseInt($('f_nom').value,10),tgl=$('f_tgl').value,kat=$('f_kat').value;
+  if(!nom||nom<=0)return alert('Isi nominal dulu.');
+  if(!tgl)return alert('Isi tanggal dulu.');
+  var t={id:uid(),tgl:tgl,tipe:ft,kat:kat,nom:nom,cat:$('f_cat').value.trim()};
+  if(ft==='masuk'&&kat==='Iuran warga'){
+    var w=S.warga.find(function(x){return x.id===$('f_w').value}),ym=$('f_ym').value;
+    if(!w)return alert('Tambah warga dulu di tab Warga.');
+    if(!ym)return alert('Pilih bulan iuran.');
+    if(S.trx.some(function(x){return x.wid===w.id&&x.ym===ym})&&!confirm(w.nama+' sudah tercatat bayar bulan '+ym+'. Tetap simpan?'))return;
+    t.wid=w.id;t.wn=w.nama;t.ym=ym;
+    if(!t.cat)t.cat='Iuran '+ym;
+  }
+  S.trx.push(t);save();render();
+}
+function delTrx(id){
+  if(!confirm('Hapus transaksi ini?'))return;
+  S.trx=S.trx.filter(function(t){return t.id!==id});save();render();
+}
+
+/* WARGA */
+function vWar(){
+  return '<div class="card"><h3>Tambah warga</h3><label>Nama</label><input id="w_n"><label>Blok / nomor rumah</label><input id="w_b" placeholder="contoh: A3/12">'+
+  '<label>Iuran per bulan (Rp)</label><input type="number" inputmode="numeric" id="w_i" placeholder="contoh: 50000">'+
+  '<label>No. HP (opsional)</label><input id="w_h" inputmode="tel"><button class="pri" onclick="addW()">Tambah warga</button></div>'+
+  '<h3>Daftar warga ('+S.warga.length+')</h3><div class="card">'+(S.warga.length?S.warga.map(function(w){
+    return '<div class="li"><div><b>'+esc(w.nama)+'</b><br><span class="mu">'+esc(w.blok)+(w.hp?' · '+esc(w.hp):'')+'<br>Iuran '+rp(w.iuran)+'/bln</span></div><div><button class="del" style="color:var(--tx)" onclick="editW(\''+w.id+'\')">ubah iuran</button><br><button class="del" onclick="delW(\''+w.id+'\')">hapus</button></div></div>';
+  }).join(''):'<span class="mu">Belum ada warga.</span>')+'</div>';
+}
+function addW(){
+  var n=$('w_n').value.trim(),i=parseInt($('w_i').value,10);
+  if(!n)return alert('Isi nama warga.');
+  if(!i||i<0)return alert('Isi nominal iuran.');
+  S.warga.push({id:uid(),nama:n,blok:$('w_b').value.trim(),hp:$('w_h').value.trim(),iuran:i});save();render();
+}
+function editW(id){
+  var w=S.warga.find(function(x){return x.id===id}),v=prompt('Iuran baru per bulan untuk '+w.nama+' (Rp):',w.iuran);
+  if(v===null)return;v=parseInt(v,10);if(!v||v<0)return alert('Nominal tidak valid.');
+  w.iuran=v;save();render();
+}
+function delW(id){
+  var w=S.warga.find(function(x){return x.id===id});
+  if(!confirm('Hapus '+w.nama+'? Riwayat pembayarannya tetap tersimpan di transaksi, tapi hilang dari checklist.'))return;
+  S.warga=S.warga.filter(function(x){return x.id!==id});save();render();
+}
+
+/* LAPORAN */
+function vLap(){
+  return '<div class="card"><label>Bulan laporan</label><input type="month" id="l_m" value="'+rm+'" onchange="rm=this.value;genLap()">'+
+  '<label>Teks untuk grup WA</label><textarea id="l_t" readonly></textarea>'+
+  '<button class="pri" onclick="copyLap()">Salin laporan</button></div>'+
+  '<div class="card"><h3>Cadangan data</h3><p class="mu">Simpan backup tiap akhir bulan ke Google Drive atau kirim ke WA sendiri. Kalau ganti HP, tinggal import.</p>'+
+  '<button class="sec" onclick="exportJSON()">Backup (.json)</button><button class="sec" onclick="exportCSV()">Export Excel (.csv)</button>'+
+  '<button class="sec" onclick="$(\'imp\').click()">Import backup</button><input type="file" id="imp" accept=".json,application/json" style="display:none" onchange="importJSON(this)"></div>';
+}
+function genLap(){
+  var m=rm||today().slice(0,7),el=$('l_t');if(!el)return;
+  var bt=S.trx.filter(function(t){return t.tgl.slice(0,7)===m}).sort(function(a,b){return a.tgl.localeCompare(b.tgl)});
+  var awal=sum(S.trx.filter(function(t){return t.tgl.slice(0,7)<m}),'masuk')-sum(S.trx.filter(function(t){return t.tgl.slice(0,7)<m}),'keluar');
+  var mi=bt.filter(function(t){return t.tipe==='masuk'}),ke=bt.filter(function(t){return t.tipe==='keluar'});
+  var line=function(t){return '- '+t.tgl.slice(8)+'/'+t.tgl.slice(5,7)+' '+t.kat+(t.wn?' ('+t.wn+')':'')+(t.cat&&!t.wn?' - '+t.cat:'')+': '+rp(t.nom)};
+  var blm=S.warga.filter(function(w){return !S.trx.some(function(t){return t.wid===w.id&&t.ym===m})});
+  var x='*LAPORAN KAS RT*\nPeriode: '+BLNF[+m.slice(5)-1]+' '+m.slice(0,4)+'\n\nSaldo awal: '+rp(awal)+
+  '\n\n*Pemasukan: '+rp(sum(bt,'masuk'))+'*\n'+(mi.length?mi.map(line).join('\n'):'- (tidak ada)')+
+  '\n\n*Pengeluaran: '+rp(sum(bt,'keluar'))+'*\n'+(ke.length?ke.map(line).join('\n'):'- (tidak ada)')+
+  '\n\n*Saldo akhir: '+rp(awal+sum(bt,'masuk')-sum(bt,'keluar'))+'*';
+  if(S.warga.length)x+='\n\nBelum bayar iuran bulan ini ('+blm.length+'):\n'+(blm.length?blm.map(function(w){return '- '+w.nama+' ('+w.blok+')'}).join('\n'):'- semua sudah bayar');
+  x+='\n\nTerima kasih atas partisipasinya.';
+  el.value=x;
+}
+function copyLap(){
+  var el=$('l_t');el.select();
+  try{navigator.clipboard.writeText(el.value).then(function(){alert('Laporan tersalin. Tinggal paste di WA.')},function(){document.execCommand('copy');alert('Laporan tersalin.')})}
+  catch(e){document.execCommand('copy');alert('Laporan tersalin.')}
+}
+function dl(name,text,type){
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type}));a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+function exportJSON(){dl('backup-kas-rt-'+today()+'.json',JSON.stringify(S),'application/json')}
+function exportCSV(){
+  var q=function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'};
+  var rows=[['Tanggal','Tipe','Kategori','Nominal','Warga','Catatan']].concat(S.trx.slice().sort(function(a,b){return a.tgl.localeCompare(b.tgl)}).map(function(t){return [t.tgl,t.tipe==='masuk'?'Pemasukan':'Pengeluaran',t.kat,t.nom,t.wn||'',t.cat||'']}));
+  dl('kas-rt-'+today()+'.csv','\ufeff'+rows.map(function(r){return r.map(q).join(',')}).join('\n'),'text/csv');
+}
+function importJSON(inp){
+  var f=inp.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var d=JSON.parse(rd.result);
+      if(!Array.isArray(d.warga)||!Array.isArray(d.trx))throw 0;
+      if(!confirm('Import akan MENGGANTI semua data di perangkat ini ('+d.warga.length+' warga, '+d.trx.length+' transaksi). Lanjut?'))return;
+      S=d;save();render();alert('Data berhasil di-import.');
+    }catch(e){alert('File backup tidak valid.')}
+  };
+  rd.readAsText(f);inp.value='';
+}
+render();
+</script>
+</body>
+</html>
