@@ -59,7 +59,9 @@ var today=function(){return new Date(Date.now()-new Date().getTimezoneOffset()*6
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 var BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 var BLNF=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-var KM=['Iuran warga','Donasi','Lainnya'],KK=['Gaji satpam','Kebersihan','Listrik/air pos','Perbaikan','Acara/kegiatan','Lainnya'];
+var KM=['Iuran warga','Donasi'],KK=['Gaji satpam','Kebersihan','Listrik/air pos','Perbaikan','Acara/kegiatan'];
+function kats(t){S.kat=S.kat||{masuk:[],keluar:[]};return (t==='masuk'?KM:KK).concat(S.kat[t]||[],['Lainnya'])}
+function fillKat(sel){$('f_kat').innerHTML=kats(ft).map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'<option value="__add__">+ Tambah kategori baru…</option>';if(sel)$('f_kat').value=sel}
 var tab='cek',year=new Date().getFullYear(),ft='masuk',rm=today().slice(0,7);
 var TABS=[['cek','Checklist'],['cat','Catat'],['war','Warga'],['lap','Laporan']];
 
@@ -117,10 +119,15 @@ function vCat(){
 }
 function setTipe(t,keep){
   ft=t;$('tm').className=t==='masuk'?'on':'';$('tk').className=t==='keluar'?'on':'';
-  $('f_kat').innerHTML=(t==='masuk'?KM:KK).map(function(k){return '<option>'+k+'</option>'}).join('');
+  fillKat();
   katChg();
 }
 function katChg(){
+  if($('f_kat').value==='__add__'){
+    var n=(prompt('Nama kategori baru:')||'').trim(),l=kats(ft);
+    if(n&&!l.some(function(k){return k.toLowerCase()===n.toLowerCase()})){S.kat[ft]=S.kat[ft]||[];S.kat[ft].push(n);save();fillKat(n)}
+    else fillKat(l[0]);
+  }
   var iur=ft==='masuk'&&$('f_kat').value==='Iuran warga';
   $('f_iur').style.display=iur?'block':'none';
   if(iur)wChg();
